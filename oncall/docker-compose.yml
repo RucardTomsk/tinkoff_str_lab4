@@ -1,0 +1,81 @@
+version: '3'
+
+volumes:
+  prometheus_data: {}
+
+services:
+  oncall:
+    build: .
+    container_name: oncall
+    ports:
+      - "28080:8080"
+      - "28082:8082"
+    environment:
+      - DOCKER_DB_BOOTSTRAP=1
+      - IRIS_API_HOST=iris
+    volumes:
+      - ./configs/config.docker.yaml:/home/oncall/config/config.yaml
+
+  oncall-mysql:
+    container_name: oncall-mysql
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+
+  prometheus:
+    image: prom/prometheus:v2.36.2
+    container_name: prometheus
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - '29090:9090'
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys/fs/cgroup/:/sys/fs/cgroup/
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 28081:8080
+    deploy:
+      mode: global
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.12.0
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml
+    ports:
+      - 29115:9115
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.3.1
+    command:
+      - --path.rootfs=/host
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.textfile
+      - --collector.textfile.directory=/var/lib/node-exporter/textfile_collector
+    pid: host
+    ports:
+      - 29100:9100
+    volumes:
+      - '/:/host:ro,rslave'
+      - '/var/lib/node-exporter/textfile_collector:/var/lib/node-exporter/textfile_collector'
+    depends_on:
+      - prometheus
+      - custom_metrics_script
+
+  custom_metrics_script:
+    build: custom_metrics
+    volumes:
+      - '/var/lib/node-exporter/textfile_collector:/var/lib/node-exporter/textfile_collector'
+

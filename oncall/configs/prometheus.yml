@@ -1,0 +1,67 @@
+global:
+  scrape_interval: 5s
+  scrape_timeout: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+    - job_name: "prometheus"
+      static_configs:
+      - targets: [ "prometheus:9090" ]
+
+    - job_name: "d-targets"
+      dns_sd_configs:
+        - names:
+          - oncall
+          - cadvisor
+          type: A
+          port: 8080
+
+    - job_name: 'Blackbox-ICMP'
+      metrics_path: /probe
+      params:
+        module: [ icmp_connect ]
+      static_configs:
+        - targets:
+          - oncall
+      relabel_configs:
+        - source_labels: [ __address__ ]
+          target_label: __param_target
+        - source_labels: [ __param_target ]
+          target_label: instance
+        - target_label: __address__
+          replacement: blackbox:9115
+
+    - job_name: 'Blackbox-TCP'
+      metrics_path: /probe
+      params:
+        module: [ tcp_connect ]
+      static_configs:
+        - targets:
+            - 92.63.64.241:80
+      relabel_configs:
+        - source_labels: [ __address__ ]
+          target_label: __param_target
+        - source_labels: [ __param_target ]
+          target_label: instance
+        - target_label: __address__
+          replacement: blackbox:9115
+
+    - job_name: 'Blackbox-HTTP'
+      metrics_path: /probe
+      params:
+        module: [ http_2xx ]
+      static_configs:
+        - targets:
+            - http://oncall:8080
+      relabel_configs:
+        - source_labels: [ __address__ ]
+          target_label: __param_target
+        - source_labels: [ __param_target ]
+          target_label: instance
+        - target_label: __address__
+          replacement: blackbox:9115
+
+    - job_name: "node-exporter"
+      static_configs:
+        - targets: [ "node-exporter:9100" ]
