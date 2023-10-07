@@ -1,0 +1,7 @@
+prometheus:
+  server_port: 5050
+
+oncall_api:
+  base_url: "http://localhost:28080"
+  username: "root"
+  password: "123"
