@@ -8,8 +8,8 @@ services:
     build: .
     container_name: oncall
     ports:
-      - "28080:8080"
-      - "28082:8082"
+      - "8080:8080"
+      - "8082:8082"
     environment:
       - DOCKER_DB_BOOTSTRAP=1
       - IRIS_API_HOST=iris
@@ -29,7 +29,7 @@ services:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     ports:
-      - '29090:9090'
+      - '9090:9090'
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor
@@ -41,7 +41,7 @@ services:
       - /sys/fs/cgroup/:/sys/fs/cgroup/
       - /var/lib/docker/:/var/lib/docker:ro
     ports:
-      - 28081:8080
+      - 8081:8080
     deploy:
       mode: global
 
@@ -52,30 +52,12 @@ services:
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml
     ports:
-      - 29115:9115
+      - 9115:9115
     depends_on:
       - prometheus
 
-  node-exporter:
-    image: quay.io/prometheus/node-exporter:v1.3.1
-    command:
-      - --path.rootfs=/host
-      - --collector.disable-defaults
-      - --collector.cpu
-      - --collector.textfile
-      - --collector.textfile.directory=/var/lib/node-exporter/textfile_collector
-    pid: host
+  my_metrics:
+    build: my_metrics
     ports:
-      - 29100:9100
-    volumes:
-      - '/:/host:ro,rslave'
-      - '/var/lib/node-exporter/textfile_collector:/var/lib/node-exporter/textfile_collector'
-    depends_on:
-      - prometheus
-      - custom_metrics_script
-
-  custom_metrics_script:
-    build: custom_metrics
-    volumes:
-      - '/var/lib/node-exporter/textfile_collector:/var/lib/node-exporter/textfile_collector'
+      - 5050:5050
 
